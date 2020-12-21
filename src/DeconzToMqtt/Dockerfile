@@ -5,9 +5,8 @@ WORKDIR /app
 
 FROM mcr.microsoft.com/dotnet/sdk:5.0 AS build
 WORKDIR /src
-COPY ["DeconzToMqtt/DeconzToMqtt.csproj", "DeconzToMqtt/"]
-RUN dotnet restore "DeconzToMqtt/DeconzToMqtt.csproj"
 COPY . .
+RUN dotnet restore "DeconzToMqtt/DeconzToMqtt.csproj"
 WORKDIR "/src/DeconzToMqtt"
 RUN dotnet build "DeconzToMqtt.csproj" -c Release -o /app/build
 
@@ -15,6 +14,9 @@ FROM build AS publish
 RUN dotnet publish "DeconzToMqtt.csproj" -c Release -o /app/publish
 
 FROM base AS final
+RUN mkdir /logs
+RUN mkdir /configuration
+VOLUME /logs /configuration
 WORKDIR /app
 COPY --from=publish /app/publish .
 ENTRYPOINT ["dotnet", "DeconzToMqtt.dll"]
