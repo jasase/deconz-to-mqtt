@@ -68,7 +68,7 @@ stages:
           
     - task: Docker@2
       displayName: Push the image
-      condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/master'))
+      condition: and(succeeded(), eq(variables['Build.SourceBranch'], 'refs/heads/main'))
       inputs:
         containerRegistry: 'Docker Hub'
         repository: 'jasase/deconztomqtt'
