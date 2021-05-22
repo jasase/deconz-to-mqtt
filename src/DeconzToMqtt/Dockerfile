@@ -19,4 +19,6 @@ RUN mkdir /configuration
 VOLUME /logs /configuration
 WORKDIR /app
 COPY --from=publish /app/publish .
+
+HEALTHCHECK CMD bash -c "[ -f /app/health ]"
 ENTRYPOINT ["dotnet", "DeconzToMqtt.dll"]
