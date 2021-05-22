@@ -9,7 +9,8 @@
   <ItemGroup>    
     <PackageReference Include="Extension.TelemetryApplicationInsights" Version="1.0.37" />    
     <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.9.5" />
-    <PackageReference Include="MQTTnet" Version="3.0.8" />
+    <!--<PackageReference Include="MQTTnet" Version="3.0.15" />-->
+    <PackageReference Include="MQTTnet.Extensions.ManagedClient" Version="3.0.15" />
     <PackageReference Include="Newtonsoft.Json" Version="12.0.2" />    
 
     <PackageReference Include="Plugin.Configuration" Version="1.0.37" />    

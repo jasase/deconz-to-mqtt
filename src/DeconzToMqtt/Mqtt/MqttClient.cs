@@ -1,12 +1,11 @@
-﻿using DeconzToMqtt.Model;
+﻿using System;
+using System.Threading;
+using DeconzToMqtt.Model;
 using Framework.Abstraction.Extension;
 using MQTTnet;
 using MQTTnet.Client;
 using MQTTnet.Client.Options;
-using NLog.Extensions.Logging;
-using System;
-using System.Threading;
-using System.Threading.Tasks;
+using MQTTnet.Extensions.ManagedClient;
 
 namespace DeconzToMqtt.Mqtt
 {
@@ -20,7 +19,7 @@ namespace DeconzToMqtt.Mqtt
         private readonly string _username;
         private readonly string _password;
         private CancellationTokenSource _cancelationToken;
-        private IMqttClient _client;
+        private IManagedMqttClient _client;
 
         public MqttClient(ILogger logger, IMetricRecorder metricRecorder, ILogManager logProvider, string hostname, string username, string password)
         {
@@ -47,7 +46,7 @@ namespace DeconzToMqtt.Mqtt
         }
 
         public void Stop()
-            => _client.DisconnectAsync().Wait();
+            => _client.StopAsync().Wait();
 
         public void SendMessage(MqttMessage message)
         {
@@ -76,8 +75,7 @@ namespace DeconzToMqtt.Mqtt
 
         private void Connect()
         {
-            var optionsBuilder = new MqttClientOptionsBuilder()
-               //.WithClientId("DeconzToMqtt")
+            var clientOptions = new MqttClientOptionsBuilder()
                .WithClientId("DeconzToMqtt2")
                .WithTcpServer(_hostname)
                .WithWillMessage(new MqttApplicationMessageBuilder()
@@ -88,33 +86,20 @@ namespace DeconzToMqtt.Mqtt
 
             if (!string.IsNullOrWhiteSpace(_username))
             {
-                optionsBuilder.WithCredentials(_username, _password);
+                clientOptions.WithCredentials(_username, _password);
             }
 
-            var options = optionsBuilder.Build();
+
+            var managedOptions = new ManagedMqttClientOptionsBuilder()
+                .WithAutoReconnectDelay(TimeSpan.FromSeconds(5))
+                .WithClientOptions(clientOptions);
+
             var factory = new MqttFactory(new MqttNetLogger(_logProvider));
-            _client = factory.CreateMqttClient();
-
-
+            _client = factory.CreateManagedMqttClient();
 
             _client.UseDisconnectedHandler(async e =>
             {
                 _logger.Warn("Disconnected from MQTT server. Try reconnect...");
-                await Task.Delay(TimeSpan.FromSeconds(15));
-
-                try
-                {
-                    await _client.ConnectAsync(options);
-                }
-                catch
-                {
-                    _logger.Error("Reconnect failed. Resetting client");
-                    if (_client != null)
-                    {
-                        _client.Dispose();
-                    }
-                    _client = null;
-                }
             });
             _client.UseConnectedHandler(async e =>
             {
@@ -128,7 +113,7 @@ namespace DeconzToMqtt.Mqtt
             });
 
             _logger.Info("Connecting to MQTT server '{0}'", _hostname);
-            _client.ConnectAsync(options, _cancelationToken.Token).Wait();
+            _client.StartAsync(managedOptions.Build()).Wait(_cancelationToken.Token);
         }
 
         class MqttMessageBuilderVisitor : IMqttMessageVisitor<MqttApplicationMessage>
