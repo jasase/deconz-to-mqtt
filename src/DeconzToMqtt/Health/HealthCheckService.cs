@@ -53,7 +53,14 @@ namespace DeconzToMqtt.Health
                         healthCheck &= check.Healthy();
                     }
 
-                    File.WriteAllText("health", DateTime.Now.ToString("o"));
+                    if (healthCheck)
+                    {
+                        File.WriteAllText("health", DateTime.Now.ToString("o"));
+                    }
+                    else if (File.Exists("health"))
+                    {
+                        File.Delete("health");
+                    }
 
                 }
                 catch (Exception ex)
