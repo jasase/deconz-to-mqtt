@@ -1,16 +1,17 @@
-﻿using DeconzToMqtt.Model;
-using Framework.Abstraction.Extension;
-using Newtonsoft.Json;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Net.WebSockets;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using DeconzToMqtt.Health;
+using DeconzToMqtt.Model;
+using Framework.Abstraction.Extension;
+using Newtonsoft.Json;
 
 namespace DeconzToMqtt.Websocket
 {
-    public class WebsocketReceiver
+    public class WebsocketReceiver : IHealthCheck
     {
         private readonly ILogger _logger;
         private readonly Uri _webSocketUri;
@@ -119,5 +120,9 @@ namespace DeconzToMqtt.Websocket
 
             return (response, message.ToArray());
         }
+
+        public bool Healthy()
+            => _socket != null &&
+               _socket.State == WebSocketState.Open;
     }
 }

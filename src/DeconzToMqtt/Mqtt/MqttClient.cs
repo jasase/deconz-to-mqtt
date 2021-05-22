@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Threading;
+using DeconzToMqtt.Health;
 using DeconzToMqtt.Model;
 using Framework.Abstraction.Extension;
 using MQTTnet;
@@ -9,7 +10,7 @@ using MQTTnet.Extensions.ManagedClient;
 
 namespace DeconzToMqtt.Mqtt
 {
-    public class MqttClient
+    public class MqttClient : IHealthCheck
     {
         private readonly object _sendLock;
         private readonly ILogger _logger;
@@ -115,6 +116,11 @@ namespace DeconzToMqtt.Mqtt
             _logger.Info("Connecting to MQTT server '{0}'", _hostname);
             _client.StartAsync(managedOptions.Build()).Wait(_cancelationToken.Token);
         }
+
+        public bool Healthy()
+            => _client != null &&
+               _client.IsStarted &&
+               _client.IsConnected;
 
         class MqttMessageBuilderVisitor : IMqttMessageVisitor<MqttApplicationMessage>
         {

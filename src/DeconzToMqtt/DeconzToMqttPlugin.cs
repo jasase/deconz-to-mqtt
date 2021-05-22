@@ -1,7 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
 using DeconzToMqtt.EventHandling;
+using DeconzToMqtt.Health;
 using DeconzToMqtt.Mqtt;
 using DeconzToMqtt.Persistence;
 using DeconzToMqtt.Telemetry;
@@ -42,6 +41,7 @@ namespace DeconzToMqtt
             var sensorRepository = new SensorRepository(setting.DeconzApiKey, new Uri($"ws://{setting.DeconzAddress}:{setting.DeconzApiPort}"));
             var lightRepository = new LightRepository(setting.DeconzApiKey, new Uri($"ws://{setting.DeconzAddress}:{setting.DeconzApiPort}"));
 
+            var healthCheckService = new HealthCheckService(logManager.GetLogger<HealthCheckService>());
             var websockerReceiver = new WebsocketReceiver(logManager.GetLogger<WebsocketReceiver>(), new Uri($"ws://{setting.DeconzAddress}:{setting.DeconzWebsocketPort}"));
             var mqttClient = new MqttClient(logManager.GetLogger<MqttClient>(), metricRecorder, logManager, setting.MqttAddress, setting.MqttUsername, setting.MqttPassword);
             var eventHandler = new EventHandlingService(logManager.GetLogger<EventHandlingService>(), websockerReceiver, mqttClient, sensorRepository);
@@ -50,10 +50,14 @@ namespace DeconzToMqtt
                 lightRepository
                 }, mqttClient);
 
+            healthCheckService.AddHealthCheck(websockerReceiver);
+            healthCheckService.AddHealthCheck(mqttClient);
+
             mqttClient.Start();
             eventHandler.Start();
             websockerReceiver.Start();
             telemetryService.Start();
+            healthCheckService.Start();
         }
     }
 }
