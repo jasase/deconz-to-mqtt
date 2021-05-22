@@ -16,9 +16,6 @@ namespace DeconzToMqtt.Mqtt
             _loggerProvider = loggerProvider;
         }
 
-        public IMqttNetChildLogger CreateChildLogger(string source = null)
-            => new MqttNetChildLogger(source, _loggerProvider);
-
         public void Publish(MqttNetLogLevel logLevel, string source, string message, object[] parameters, Exception exception)
         {
             var logger = _loggerProvider.CreateLogger(source ?? "MqttNet");
@@ -43,7 +40,10 @@ namespace DeconzToMqtt.Mqtt
             }
         }
 
-        public class MqttNetChildLogger : IMqttNetChildLogger
+        public IMqttNetScopedLogger CreateScopedLogger(string source)
+            => new MqttNetChildLogger(source, _loggerProvider);
+
+        public class MqttNetChildLogger : IMqttNetScopedLogger
         {
             private readonly string _source;
             private readonly ILogger _logger;
@@ -56,15 +56,14 @@ namespace DeconzToMqtt.Mqtt
                 _loggerProvider = loggerProvider;
             }
 
-            public IMqttNetChildLogger CreateChildLogger(string source = null)
+            public IMqttNetScopedLogger CreateScopedLogger(string source)
                 => new MqttNetChildLogger(_source + "." + source, _loggerProvider);
-
             public void Error(Exception exception, string message, params object[] parameters)
                 => _logger.LogError(exception, message, parameters);
 
             public void Info(string message, params object[] parameters)
                 => _logger.LogInformation(message, parameters);
-
+            public void Publish(MqttNetLogLevel logLevel, string message, object[] parameters, Exception exception) => throw new NotImplementedException();
             public void Verbose(string message, params object[] parameters)
                 => _logger.LogTrace(message, parameters);
 
