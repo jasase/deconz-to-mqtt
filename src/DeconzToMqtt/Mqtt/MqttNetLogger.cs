@@ -17,11 +17,7 @@ namespace DeconzToMqtt.Mqtt
         }
 
         public void Publish(MqttNetLogLevel logLevel, string source, string message, object[] parameters, Exception exception)
-        {
-            var logger = _loggerProvider.CreateLogger(source ?? "MqttNet");
-
-            logger.Log(ToMsLogging(logLevel), exception, message, parameters);
-        }
+            => CreateScopedLogger(source).Publish(logLevel, message, parameters, exception);
 
         private LogLevel ToMsLogging(MqttNetLogLevel level)
         {
@@ -58,17 +54,26 @@ namespace DeconzToMqtt.Mqtt
 
             public IMqttNetScopedLogger CreateScopedLogger(string source)
                 => new MqttNetChildLogger(_source + "." + source, _loggerProvider);
-            public void Error(Exception exception, string message, params object[] parameters)
-                => _logger.LogError(exception, message, parameters);
 
-            public void Info(string message, params object[] parameters)
-                => _logger.LogInformation(message, parameters);
-            public void Publish(MqttNetLogLevel logLevel, string message, object[] parameters, Exception exception) => throw new NotImplementedException();
-            public void Verbose(string message, params object[] parameters)
-                => _logger.LogTrace(message, parameters);
+            public void Publish(MqttNetLogLevel logLevel, string message, object[] parameters, Exception exception)
+                => _logger.Log(ToMsLogging(logLevel), exception, message, parameters);
 
-            public void Warning(Exception exception, string message, params object[] parameters)
-                => _logger.LogWarning(exception, message, parameters);
+            private LogLevel ToMsLogging(MqttNetLogLevel level)
+            {
+                switch (level)
+                {
+                    case MqttNetLogLevel.Verbose:
+                        return LogLevel.Trace;
+                    case MqttNetLogLevel.Info:
+                        return LogLevel.Information;
+                    case MqttNetLogLevel.Warning:
+                        return LogLevel.Warning;
+                    case MqttNetLogLevel.Error:
+                        return LogLevel.Error;
+                    default:
+                        return LogLevel.None;
+                }
+            }
         }
     }
 }

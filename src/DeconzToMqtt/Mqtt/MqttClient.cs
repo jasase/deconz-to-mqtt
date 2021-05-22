@@ -114,7 +114,7 @@ namespace DeconzToMqtt.Mqtt
             });
 
             _logger.Info("Connecting to MQTT server '{0}'", _hostname);
-            _client.StartAsync(managedOptions.Build()).Wait();
+            _client.StartAsync(managedOptions.Build()).Wait(_cancelationToken.Token);
         }
 
         public bool Healthy()
