@@ -21,6 +21,9 @@ stages:
       vmImage: 'ubuntu-latest'
     steps:
 
+    - checkout: self
+      fetchDepth: 0
+
     - task: gitversion/setup@0
       inputs:
         versionSpec: '5.x'
