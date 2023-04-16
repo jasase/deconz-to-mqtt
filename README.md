@@ -26,13 +26,13 @@ docker run -d \
 
 | Variable | Optional | Description | 
 | -------- | -------- | ----------- |
-| DeconzToMqtt_DeconzAddress | | IP or Hostname of deCONZ Host |
-| DeconzToMqtt_DeconzApiKey  | | Acquire a valid API Key from deCONZ REST API to authorize the access: https://dresden-elektronik.github.io/deconz-rest-doc/getting_started/#acquire-an-api-key   |
-| DeconzToMqtt_DeconzWebsocketPort | x | Port of the Websocket Server. Default: 443 https://dresden-elektronik.github.io/deconz-rest-doc/endpoints/websocket/#websocket-configuration   |
-| DeconzToMqtt_DeconzApiPort  | x | Port of the API webserver of deCONZ. Default: 80   |
-| DeconzToMqtt_MqttAddress  | | Password to login to MQTT Broker.  |
-| DeconzToMqtt_MqttUsername  | x | Username to login to MQTT Broker. Leave blank if MQTT Broker doesn't  |
-| DeconzToMqtt_MqttPassword  | x | Password to login to MQTT Broker. |
+| DeconzToMqtt__DeconzAddress | | IP or Hostname of deCONZ Host |
+| DeconzToMqtt__DeconzApiKey  | | Acquire a valid API Key from deCONZ REST API to authorize the access: https://dresden-elektronik.github.io/deconz-rest-doc/getting_started/#acquire-an-api-key   |
+| DeconzToMqtt__DeconzWebsocketPort | x | Port of the Websocket Server. Default: 443 https://dresden-elektronik.github.io/deconz-rest-doc/endpoints/websocket/#websocket-configuration   |
+| DeconzToMqtt__DeconzApiPort  | x | Port of the API webserver of deCONZ. Default: 80   |
+| DeconzToMqtt__MqttAddress  | | Password to login to MQTT Broker.  |
+| DeconzToMqtt__MqttUsername  | x | Username to login to MQTT Broker. Leave blank if MQTT Broker doesn't  |
+| DeconzToMqtt__MqttPassword  | x | Password to login to MQTT Broker. |
 
 ### Docker-Compose
 
@@ -43,11 +43,11 @@ services:
     image: jasase/deconztomqtt
     restart: "always"
     environment:
-      - DeconzToMqtt_DeconzAddress=deconz.local
-      - DeconzToMqtt_DeconzApiKey=528BAC1B40
-      - DeconzToMqtt_MqttAddress=mqtt.local
-      - DeconzToMqtt_MqttUsername=mqttuser
-      - DeconzToMqtt_MqttPassword=123456
+      - DeconzToMqtt__DeconzAddress=deconz.local
+      - DeconzToMqtt__DeconzApiKey=528BAC1B40
+      - DeconzToMqtt__MqttAddress=mqtt.local
+      - DeconzToMqtt__MqttUsername=mqttuser
+      - DeconzToMqtt__MqttPassword=123456
 ```
 
 ## MQTT Topic
