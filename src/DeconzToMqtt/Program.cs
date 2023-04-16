@@ -33,6 +33,8 @@ namespace DeconzToMqtt
             builder.Services.AddOptions<DeconzToMqttOption>()
                             .BindConfiguration("DeconzToMqtt");
 
+            //builder.Services.AddHealthChecks()
+
             var app = builder.Build();
 
             app.Run();
