@@ -6,10 +6,8 @@ using DeconzToMqtt.Websocket;
 using DeconzToMqtt.EventHandling;
 using DeconzToMqtt.Mqtt;
 using DeconzToMqtt.Persistence;
-using DeconzToMqtt;
-using Microsoft.Extensions.Configuration;
 
-namespace DeconzToMqtt2
+namespace DeconzToMqtt
 {
     public class Program
     {
