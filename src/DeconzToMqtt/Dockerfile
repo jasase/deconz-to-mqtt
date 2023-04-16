@@ -6,16 +6,16 @@ EXPOSE 80
 
 FROM mcr.microsoft.com/dotnet/sdk:6.0 AS build
 WORKDIR /src
-COPY ["DeconzToMqtt2/DeconzToMqtt2.csproj", "DeconzToMqtt2/"]
-RUN dotnet restore "DeconzToMqtt2/DeconzToMqtt2.csproj"
+COPY ["DeconzToMqtt/DeconzToMqtt.csproj", "DeconzToMqtt/"]
+RUN dotnet restore "DeconzToMqtt/DeconzToMqtt.csproj"
 COPY . .
-WORKDIR "/src/DeconzToMqtt2"
-RUN dotnet build "DeconzToMqtt2.csproj" -c Release -o /app/build
+WORKDIR "/src/DeconzToMqtt"
+RUN dotnet build "DeconzToMqtt.csproj" -c Release -o /app/build
 
 FROM build AS publish
-RUN dotnet publish "DeconzToMqtt2.csproj" -c Release -o /app/publish /p:UseAppHost=false
+RUN dotnet publish "DeconzToMqtt.csproj" -c Release -o /app/publish /p:UseAppHost=false
 
 FROM base AS final
 WORKDIR /app
 COPY --from=publish /app/publish .
-ENTRYPOINT ["dotnet", "DeconzToMqtt2.dll"]
+ENTRYPOINT ["dotnet", "DeconzToMqtt.dll"]
