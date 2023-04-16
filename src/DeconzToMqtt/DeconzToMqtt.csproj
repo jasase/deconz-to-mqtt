@@ -1,29 +1,19 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk.Web">
 
-  <PropertyGroup>
-    <OutputType>Exe</OutputType>
-    <TargetFramework>net5.0</TargetFramework>
-    <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
-  </PropertyGroup>
+    <PropertyGroup>
+        <TargetFramework>net6.0</TargetFramework>
+        <Nullable>enable</Nullable>
+        <DockerDefaultTargetOS>Linux</DockerDefaultTargetOS>
+    </PropertyGroup>
 
-  <ItemGroup>    
-    <PackageReference Include="Extension.TelemetryApplicationInsights" Version="1.0.37" />    
-    <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.9.5" />
-    <!--<PackageReference Include="MQTTnet" Version="3.0.15" />-->
-    <PackageReference Include="MQTTnet.Extensions.ManagedClient" Version="3.0.15" />
-    <PackageReference Include="Newtonsoft.Json" Version="12.0.2" />    
 
-    <PackageReference Include="Plugin.Configuration" Version="1.0.37" />    
-    <PackageReference Include="Plugin.Scheduling" Version="1.0.37" />
-    <PackageReference Include="Plugin.ThreadManager" Version="1.0.37" />
-    <PackageReference Include="Plugin.XmlToObjectPlugin" Version="1.0.37" />
-    <PackageReference Include="ServiceHost.Docker" Version="1.0.37" />
-  </ItemGroup>
+    <ItemGroup>
 
-  <ItemGroup>
-    <None Update="NLog.config">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-  </ItemGroup>
+        <PackageReference Include="Microsoft.VisualStudio.Azure.Containers.Tools.Targets" Version="1.17.2" />
+
+        <PackageReference Include="MQTTnet.Extensions.ManagedClient" Version="3.0.15" />
+        <PackageReference Include="Newtonsoft.Json" Version="12.0.2" />
+
+    </ItemGroup>
 
 </Project>

@@ -15,47 +15,23 @@ stages:
 - stage: Build
   displayName: Build image
   jobs:  
-#  - template: build/job.yml  # Template reference
-#    parameters:
-#      name: windows
-#      pool:
-#        vmImage: 'windows-latest'
-#  - template: build/job.yml  # Template reference
-#    parameters:
-#      name: linux
-#      pool:
-#        vmImage: 'ubuntu-latest'
 
   - job: linux
     pool: 
       vmImage: 'ubuntu-latest'
     steps:
 
+    - checkout: self
+      fetchDepth: 0
+
     - task: gitversion/setup@0
       inputs:
-        versionSpec: '5.6.0'
+        versionSpec: '5.x'
 
     - task: gitversion/execute@0
       inputs:
         useConfigFile: true
-        configFilePath: 'gitversion.yml'
-
-    - task: Bash@3
-      inputs:
-        targetType: 'inline'
-        script: 'cp build/nuget.config src/nuget.config'
-  
-    - task: NuGetToolInstaller@1
-      inputs:
-        versionSpec: 
-  
-    - task: NuGetCommand@2
-      inputs:
-        command: 'restore'
-        restoreSolution: '**/*.sln'
-        feedsToUse: 'select'
-        vstsFeed: 'e745086d-201a-4e45-8d8f-ed7088052af8'
-        restoreDirectory: 'NugetPackage'    
+        configFilePath: 'gitversion.yml'   
   
     - task: Docker@2
       displayName: Build the image

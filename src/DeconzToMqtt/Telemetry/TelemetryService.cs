@@ -4,52 +4,33 @@ using System.Threading;
 using System.Threading.Tasks;
 using DeconzToMqtt.Mqtt;
 using DeconzToMqtt.Persistence;
-using Framework.Abstraction.Extension;
+using Microsoft.Extensions.Configuration;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace DeconzToMqtt.Telemetry
 {
-    public class TelemetryService
+    public class TelemetryService : BackgroundService
     {
         private readonly ILogger _logger;
-        private readonly IMetricRecorder _metricRecorder;
         private readonly DeconzRepository[] _repositories;
         private readonly MqttClient _mqttClient;
-        private CancellationTokenSource _cancelationToken;
-        private Task _task;
 
-        public TelemetryService(ILogger logger,
-                                IMetricRecorder metricRecorder,
-                                DeconzRepository[] repositories,
+        public TelemetryService(ILogger<TelemetryService> logger,
+                                SensorRepository sensorRepository,
+                                LightRepository lightRepository,
                                 MqttClient mqttClient)
         {
             _logger = logger;
-            _metricRecorder = metricRecorder;
-            _repositories = repositories;
-            _mqttClient = mqttClient;
+            _repositories = new DeconzRepository[] { sensorRepository, lightRepository };
+            _mqttClient = mqttClient;            
         }
 
-        public void Start()
+        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
-            _cancelationToken = new CancellationTokenSource();
-            _task = Task.Factory.StartNew(Run);
-        }
-
-        public void Stop()
-        {
-            if (_cancelationToken != null)
+            while (!stoppingToken.IsCancellationRequested)
             {
-                _cancelationToken.Cancel();
-            }
-
-            _cancelationToken = null;
-        }
-
-        private void Run()
-        {
-            while (!_cancelationToken.IsCancellationRequested)
-            {
-                _logger.Info("Sending telemetry");
-                _metricRecorder.CountEvent(DeconzToMqttIdentifier.SendInterval());
+                _logger.LogInformation("Sending telemetry");
                 try
                 {
                     foreach (var repository in _repositories)
@@ -63,24 +44,22 @@ namespace DeconzToMqtt.Telemetry
                                     Content = repository.Serialize(item),
                                     Entity = item
                                 };
-                                _mqttClient.SendMessage(msg);
+                                await _mqttClient.SendMessage(msg);
                             }
                             catch (Exception ex)
                             {
-                                _logger.Error(ex, "Sending of message for sensor {0} failed", item.Name);
+                                _logger.LogError(ex, "Sending of message for sensor {0} failed", item.Name);
                             }
                         }
                     }
                 }
                 catch (Exception ex)
                 {
-                    _logger.Error(ex, "Error in telemetry processing occurred");
+                    _logger.LogError(ex, "Error in telemetry processing occurred");
                 }
 
                 Thread.Sleep(TimeSpan.FromSeconds(60));
             }
-
-            _task = null;
         }
     }
 }

@@ -1,13 +1,43 @@
-﻿using Extension.TelemetryApplicationInsights;
-using Framework.Abstraction.Plugins;
-using ServiceHost.Docker;
+﻿using Microsoft.AspNetCore.Builder;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.DependencyInjection;
+using DeconzToMqtt.Telemetry;
+using DeconzToMqtt.Websocket;
+using DeconzToMqtt.EventHandling;
+using DeconzToMqtt.Mqtt;
+using DeconzToMqtt.Persistence;
 
 namespace DeconzToMqtt
 {
-    class Program : Startup
+    public class Program
     {
-        static void Main(string[] args)
-            => new Program().Run(args, BootstrapInCodeConfiguration.Default());
-                                                                   //.ConfigureTelemetry(x => x.InstrumentationKey = "30e4f76d-e462-4f0a-9f0a-9fbf4939558d"));
+        public static void Main(string[] args)
+        {
+            var builder = WebApplication.CreateBuilder(args);
+
+            builder.Logging.AddConsole()
+                           .SetMinimumLevel(LogLevel.Trace);
+
+            builder.Services.AddHostedService<EventHandlingService>();
+            builder.Services.AddHostedService<TelemetryService>();
+
+            builder.Services.AddSingleton<MqttClient>();
+            builder.Services.AddHostedService(x => x.GetService<MqttClient>());
+
+            builder.Services.AddSingleton<WebsocketReceiver>();
+            builder.Services.AddHostedService(x => x.GetService<WebsocketReceiver>());
+
+            builder.Services.AddSingleton<SensorRepository>();
+            builder.Services.AddSingleton<LightRepository>();
+
+            builder.Services.AddOptions<DeconzToMqttOption>()
+                            .BindConfiguration("DeconzToMqtt");
+
+            //builder.Services.AddHealthChecks()
+
+            var app = builder.Build();
+
+            app.Run();
+        }
     }
 }

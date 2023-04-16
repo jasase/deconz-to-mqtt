@@ -1,8 +1,14 @@
 ﻿using System;
+using System.ComponentModel.Design;
+using System.Net.Sockets;
+using System.Net.WebSockets;
 using System.Threading;
-using DeconzToMqtt.Health;
+using System.Threading.Tasks;
 using DeconzToMqtt.Model;
-using Framework.Abstraction.Extension;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using MQTTnet;
 using MQTTnet.Client;
 using MQTTnet.Client.Options;
@@ -10,117 +16,127 @@ using MQTTnet.Extensions.ManagedClient;
 
 namespace DeconzToMqtt.Mqtt
 {
-    public class MqttClient : IHealthCheck
+    public class MqttClient : IHostedService, IHealthCheck
     {
-        private readonly object _sendLock;
         private readonly ILogger _logger;
-        private readonly IMetricRecorder _metricRecorder;
-        private readonly ILogManager _logProvider;
+
+        private readonly ILoggerFactory _loggerFactory;
         private readonly string _hostname;
         private readonly string _username;
         private readonly string _password;
-        private CancellationTokenSource _cancelationToken;
         private IManagedMqttClient _client;
 
-        public MqttClient(ILogger logger, IMetricRecorder metricRecorder, ILogManager logProvider, string hostname, string username, string password)
+        private SemaphoreSlim _semaphore;
+
+        public MqttClient(ILogger<MqttClient> logger, ILoggerFactory logProvider, IOptions<DeconzToMqttOption> options)
         {
-            _sendLock = new object();
             _logger = logger;
-            _metricRecorder = metricRecorder;
-            _logProvider = logProvider;
-            _hostname = hostname;
-            _username = username;
-            _password = password;
+            _loggerFactory = logProvider;
+            _hostname = options.Value.MqttAddress;
+            _username = options.Value.MqttUsername;
+            _password = options.Value.MqttPassword;
+            _semaphore = new SemaphoreSlim(1);
         }
 
-        public void Start()
+        public bool IsConnected => _client != null &&
+                                   _client.IsStarted &&
+                                   _client.IsConnected;
+
+        public async Task StartAsync(CancellationToken cancellationToken)
+            => await Connect();
+
+        public async Task StopAsync(CancellationToken cancellationToken)
+            => await _client.StopAsync();
+
+        public async Task SendMessage(MqttMessage message)
         {
-            if (_cancelationToken != null)
+            if (!IsConnected)
             {
-                _cancelationToken.Cancel();
+                await Connect();
             }
 
+            var visitor = new MqttMessageBuilderVisitor();
+            var messageConverted = message.Accept(visitor);
 
-            _cancelationToken = new CancellationTokenSource();
-
-            Connect();
+            await _client.PublishAsync(messageConverted);
         }
 
-        public void Stop()
-            => _client.StopAsync().Wait();
-
-        public void SendMessage(MqttMessage message)
+        private async Task Connect()
         {
-            _metricRecorder.CountEvent(DeconzToMqttIdentifier.SendMessage());
-            lock (_sendLock)
+            try
             {
-                if (!_client.IsConnected)
-                {
-                    _logger.Warn("MQTT Client not connected. Try reconnect");
-                    if (_client != null)
-                    {
-                        _client.Dispose();
-                    }
-                    _client = null;
+                await _semaphore.WaitAsync();
 
-                    Connect();
+                if (IsConnected)
+                {
+                    return;
+                }
+                if (_client != null && _client.IsStarted)
+                {
+                    return;
                 }
 
-                var visitor = new MqttMessageBuilderVisitor();
-                var messageConverted = message.Accept(visitor);
+                if (_client != null)
+                {
+                    _client.Dispose();
+                }
+                _client = null;
 
-                _metricRecorder.Measure(DeconzToMqttIdentifier.MessageSize(), messageConverted.Payload.Length);
-                _client.PublishAsync(messageConverted, _cancelationToken.Token).Wait();
+                _logger.LogInformation("MQTT Client not connected. Do connect");
+
+                var clientOptions = new MqttClientOptionsBuilder()
+                  .WithClientId("DeconzToMqtt")
+                  .WithTcpServer(_hostname)
+                  .WithWillMessage(new MqttApplicationMessageBuilder()
+                                       .WithRetainFlag(true)
+                                       .WithTopic("tele/deconztomqtt/LWT")
+                                       .WithPayload("offline")
+                                       .Build());
+
+                if (!string.IsNullOrWhiteSpace(_username))
+                {
+                    clientOptions.WithCredentials(_username, _password);
+                }
+
+
+                var managedOptions = new ManagedMqttClientOptionsBuilder()
+                    .WithAutoReconnectDelay(TimeSpan.FromSeconds(5))
+                    .WithClientOptions(clientOptions);
+
+                var factory = new MqttFactory(new MqttNetLogger(_loggerFactory));
+                _client = factory.CreateManagedMqttClient();
+
+                _client.UseDisconnectedHandler(async e =>
+                {
+                    _logger.LogWarning("Disconnected from MQTT server. Try reconnect...");
+                });
+                _client.UseConnectedHandler(async e =>
+                {
+                    _logger.LogInformation("Connected to MQTT server");
+
+                    await _client.PublishAsync(new MqttApplicationMessageBuilder()
+                                        .WithRetainFlag(true)
+                                        .WithTopic("tele/deconztomqtt/LWT")
+                                        .WithPayload("online")
+                                        .Build());
+                });
+
+                _logger.LogInformation("Connecting to MQTT server '{0}'", _hostname);
+                await _client.StartAsync(managedOptions.Build());
+            }
+            finally
+            {
+                _semaphore.Release();
             }
         }
 
-        private void Connect()
-        {
-            var clientOptions = new MqttClientOptionsBuilder()
-               .WithClientId("DeconzToMqtt2")
-               .WithTcpServer(_hostname)
-               .WithWillMessage(new MqttApplicationMessageBuilder()
-                                    .WithRetainFlag(true)
-                                    .WithTopic("tele/deconztomqtt/LWT")
-                                    .WithPayload("offline")
-                                    .Build());
+        public Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
+        => Task.FromResult(_client != null &&
+                           _client.IsStarted &&
+                           _client.IsConnected
+                    ? HealthCheckResult.Healthy()
+                    : HealthCheckResult.Unhealthy());
 
-            if (!string.IsNullOrWhiteSpace(_username))
-            {
-                clientOptions.WithCredentials(_username, _password);
-            }
-
-
-            var managedOptions = new ManagedMqttClientOptionsBuilder()
-                .WithAutoReconnectDelay(TimeSpan.FromSeconds(5))
-                .WithClientOptions(clientOptions);
-
-            var factory = new MqttFactory(new MqttNetLogger(_logProvider));
-            _client = factory.CreateManagedMqttClient();
-
-            _client.UseDisconnectedHandler(async e =>
-            {
-                _logger.Warn("Disconnected from MQTT server. Try reconnect...");
-            });
-            _client.UseConnectedHandler(async e =>
-            {
-                _logger.Info("Connected to MQTT server");
-
-                await _client.PublishAsync(new MqttApplicationMessageBuilder()
-                                    .WithRetainFlag(true)
-                                    .WithTopic("tele/deconztomqtt/LWT")
-                                    .WithPayload("online")
-                                    .Build());
-            });
-
-            _logger.Info("Connecting to MQTT server '{0}'", _hostname);
-            _client.StartAsync(managedOptions.Build()).Wait(_cancelationToken.Token);
-        }
-
-        public bool Healthy()
-            => _client != null &&
-               _client.IsStarted &&
-               _client.IsConnected;
 
         class MqttMessageBuilderVisitor : IMqttMessageVisitor<MqttApplicationMessage>
         {

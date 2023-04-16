@@ -1,8 +1,9 @@
-﻿using Framework.Abstraction.Extension;
+﻿
+using System;
 
 namespace DeconzToMqtt
 {
-    public class DeconzToMqttSetting : ISetting
+    public class DeconzToMqttOption
     {
         public string DeconzAddress { get; set; }
         public int DeconzWebsocketPort { get; set; }
@@ -15,9 +16,9 @@ namespace DeconzToMqtt
         public string MqttPassword { get; set; }
 
 
-        public DeconzToMqttSetting()
+        public DeconzToMqttOption()
         {
-            DeconzAddress = "";
+            DeconzAddress = "localhost";
             DeconzWebsocketPort = 443;
             DeconzApiPort = 80;
             DeconzApiKey = "";

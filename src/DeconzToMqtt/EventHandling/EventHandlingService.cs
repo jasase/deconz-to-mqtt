@@ -1,19 +1,22 @@
-﻿using DeconzToMqtt.Model;
+﻿using System.Threading;
+using System.Threading.Tasks;
+using DeconzToMqtt.Model;
 using DeconzToMqtt.Mqtt;
 using DeconzToMqtt.Persistence;
 using DeconzToMqtt.Websocket;
-using Framework.Abstraction.Extension;
+using Microsoft.Extensions.Hosting;
+using Microsoft.Extensions.Logging;
 
 namespace DeconzToMqtt.EventHandling
 {
-    public class EventHandlingService : IWebSocketMessageSubscriber
+    public class EventHandlingService : IHostedService, IWebSocketMessageSubscriber
     {
         private readonly ILogger _logger;
         private readonly WebsocketReceiver _websocketReceiver;
         private readonly MqttClient _mqttClient;
         private readonly SensorRepository _sensorRepository;
 
-        public EventHandlingService(ILogger logger,
+        public EventHandlingService(ILogger<EventHandlingService> logger,
                                     WebsocketReceiver websocketReceiver,
                                     MqttClient mqttClient,
                                     SensorRepository sensorRepository)
@@ -32,20 +35,26 @@ namespace DeconzToMqtt.EventHandling
             }
         }
 
-        public void Start()
-            => _websocketReceiver.Subscribe(this);
+        public Task StartAsync(CancellationToken cancellationToken)
+        {
+            _websocketReceiver.Subscribe(this);
+            return Task.CompletedTask;
+        }
 
-        public void Stop()
-            => _websocketReceiver.Unsubscribe(this);
+        public Task StopAsync(CancellationToken cancellationToken)
+        {
+            _websocketReceiver.Unsubscribe(this);
+            return Task.CompletedTask;
+        }
 
         private void HandlingSensorResource(WebsocketEvent message)
         {
-            _logger.Debug("Received websocket message of type {0}", message.EventType);
+            _logger.LogDebug("Received websocket message of type {0}", message.EventType);
             if (message.EventType.ToLowerInvariant() == "changed")
             {
                 if (message.State == null)
                 {
-                    _logger.Warn("Received empty message state in websocket msg. Dismiss message");
+                    _logger.LogWarning("Received empty message state in websocket msg. Dismiss message");
                     return;
                 }
 
@@ -68,7 +77,7 @@ namespace DeconzToMqtt.EventHandling
                             Content = entity.State.Data[state.Key].ToString().ToLowerInvariant()
 
                         };
-                        _logger.Debug("Publishing change for entity '{0}' on state '{1}' to value '{2}'",
+                        _logger.LogDebug("Publishing change for entity '{0}' on state '{1}' to value '{2}'",
                             mqttMessage.Entity.Name,
                             mqttMessage.PropertyName,
                             mqttMessage.Content);
@@ -77,7 +86,7 @@ namespace DeconzToMqtt.EventHandling
                 }
                 else
                 {
-                    _logger.Warn("Got websocket message with invalid entity id {0}", message.Id);
+                    _logger.LogWarning("Got websocket message with invalid entity id {0}", message.Id);
                 }
 
                 _sensorRepository.NotifyChange(message.Id);

@@ -1,5 +1,6 @@
 ﻿using DeconzToMqtt.Model;
 using DeconzToMqtt.Persistence.StateConverters;
+using Microsoft.Extensions.Options;
 using System;
 using System.Collections.Generic;
 using System.Linq;
@@ -12,8 +13,8 @@ namespace DeconzToMqtt.Persistence
 
         protected override string EndpointName => "sensors";
 
-        public SensorRepository(string apiKey, Uri address)
-            : base(apiKey, address)
+        public SensorRepository(IOptions<DeconzToMqttOption> options)
+            : base(options.Value.DeconzApiKey, new Uri($"http://{options.Value.DeconzAddress}:{options.Value.DeconzApiPort}"))
         {
             _converters = new ISensorStateConverter[]
             {

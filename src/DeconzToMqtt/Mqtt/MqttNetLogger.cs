@@ -6,12 +6,12 @@ namespace DeconzToMqtt.Mqtt
 {
     public class MqttNetLogger : IMqttNetLogger
     {
-        private readonly ILoggerProvider _loggerProvider;
+        private readonly ILoggerFactory _loggerProvider;
         private readonly ILogger _mainLogger;
 
         public event EventHandler<MqttNetLogMessagePublishedEventArgs> LogMessagePublished;
 
-        public MqttNetLogger(ILoggerProvider loggerProvider)
+        public MqttNetLogger(ILoggerFactory loggerProvider)
         {
             _loggerProvider = loggerProvider;
         }
@@ -43,9 +43,9 @@ namespace DeconzToMqtt.Mqtt
         {
             private readonly string _source;
             private readonly ILogger _logger;
-            private readonly ILoggerProvider _loggerProvider;
+            private readonly ILoggerFactory _loggerProvider;
 
-            public MqttNetChildLogger(string source, ILoggerProvider loggerProvider)
+            public MqttNetChildLogger(string source, ILoggerFactory loggerProvider)
             {
                 _source = source ?? string.Empty;
                 _logger = loggerProvider.CreateLogger(source);
