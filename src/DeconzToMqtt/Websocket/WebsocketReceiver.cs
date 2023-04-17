@@ -63,7 +63,7 @@ namespace DeconzToMqtt.Websocket
             }
         }
 
-        protected override Task ExecuteAsync(CancellationToken stoppingToken)
+        protected override async Task ExecuteAsync(CancellationToken stoppingToken)
         {
             while (!stoppingToken.IsCancellationRequested)
             {
@@ -72,9 +72,9 @@ namespace DeconzToMqtt.Websocket
                     if (_socket.State != WebSocketState.Open)
                     {
                         _logger.LogWarning("Websocket stream closed. Try reconnect");
-                        TryReconnectSocket(stoppingToken);
+                        await TryReconnectSocket(stoppingToken);
                     }
-                    var msg = ReceiveFullMessage(_socket, stoppingToken);
+                    var msg = await ReceiveFullMessage(_socket, stoppingToken);
 
                     _logger.LogDebug("Received web socket message of length '{0}", msg.Item1.Count);
                     var stringData = Encoding.Default.GetString(msg.Item2);
@@ -91,11 +91,9 @@ namespace DeconzToMqtt.Websocket
                 catch (Exception ex)
                 {
                     _logger.LogError(ex, "Processing web socket message failed");
-                    Thread.Sleep(TimeSpan.FromSeconds(5));
+                    await Task.Delay(TimeSpan.FromSeconds(5), stoppingToken);
                 }
             }
-
-            return Task.CompletedTask;
         }
 
         private async Task TryReconnectSocket(CancellationToken stoppingToken)
@@ -110,7 +108,7 @@ namespace DeconzToMqtt.Websocket
             await _socket.ConnectAsync(_webSocketUri, stoppingToken);
         }
 
-        private (WebSocketReceiveResult, byte[]) ReceiveFullMessage(WebSocket socket, CancellationToken cancelToken)
+        private async Task<(WebSocketReceiveResult, byte[])> ReceiveFullMessage(WebSocket socket, CancellationToken cancelToken)
         {
             WebSocketReceiveResult response;
             var message = new List<byte>();
@@ -118,7 +116,7 @@ namespace DeconzToMqtt.Websocket
             var buffer = new byte[4096];
             do
             {
-                response = socket.ReceiveAsync(new ArraySegment<byte>(buffer), cancelToken).Result;
+                response = await socket.ReceiveAsync(new ArraySegment<byte>(buffer), cancelToken);
                 message.AddRange(new ArraySegment<byte>(buffer, 0, response.Count));
             } while (!response.EndOfMessage);
 

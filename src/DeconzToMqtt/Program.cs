@@ -20,9 +20,9 @@ namespace DeconzToMqtt
     {
         public static void Main(string[] args)
         {
-            var builder = WebApplication.CreateBuilder(args);            
+            var builder = WebApplication.CreateBuilder(args);
 
-            builder.Logging.SetMinimumLevel(LogLevel.Trace).AddConsole();
+            //builder.Logging.SetMinimumLevel(LogLevel.Trace).AddConsole();
 
             builder.Services.AddHostedService<EventHandlingService>();
             builder.Services.AddHostedService<TelemetryService>();
