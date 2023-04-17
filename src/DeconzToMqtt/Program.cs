@@ -22,7 +22,13 @@ namespace DeconzToMqtt
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            //builder.Logging.SetMinimumLevel(LogLevel.Trace).AddConsole();
+            builder.Logging.AddSimpleConsole(x =>
+            {
+                x.ColorBehavior = Microsoft.Extensions.Logging.Console.LoggerColorBehavior.Disabled;
+                x.SingleLine = true;
+                x.UseUtcTimestamp = true;
+                x.TimestampFormat = "yyyy-MM-dd_hh:mm:ss.ffff - ";
+            });
 
             builder.Services.AddHostedService<EventHandlingService>();
             builder.Services.AddHostedService<TelemetryService>();
