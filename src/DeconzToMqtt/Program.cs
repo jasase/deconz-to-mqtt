@@ -6,6 +6,13 @@ using DeconzToMqtt.Websocket;
 using DeconzToMqtt.EventHandling;
 using DeconzToMqtt.Mqtt;
 using DeconzToMqtt.Persistence;
+using Microsoft.AspNetCore.Diagnostics.HealthChecks;
+using Microsoft.AspNetCore.Http;
+using Microsoft.Extensions.Diagnostics.HealthChecks;
+using System.IO;
+using System.Text.Json;
+using System.Text;
+using System.Threading.Tasks;
 
 namespace DeconzToMqtt
 {
@@ -15,8 +22,13 @@ namespace DeconzToMqtt
         {
             var builder = WebApplication.CreateBuilder(args);
 
-            builder.Logging.AddConsole()
-                           .SetMinimumLevel(LogLevel.Trace);
+            builder.Logging.AddSimpleConsole(x =>
+            {
+                x.ColorBehavior = Microsoft.Extensions.Logging.Console.LoggerColorBehavior.Disabled;
+                x.SingleLine = true;
+                x.UseUtcTimestamp = true;
+                x.TimestampFormat = "yyyy-MM-dd_hh:mm:ss.ffff - ";
+            });
 
             builder.Services.AddHostedService<EventHandlingService>();
             builder.Services.AddHostedService<TelemetryService>();
@@ -33,11 +45,61 @@ namespace DeconzToMqtt
             builder.Services.AddOptions<DeconzToMqttOption>()
                             .BindConfiguration("DeconzToMqtt");
 
-            //builder.Services.AddHealthChecks()
+            builder.Services.AddHealthChecks()
+                            .AddCheck<DepedencyInjectionHealthCheck<WebsocketReceiver>>("WebsocketReceiver")
+                            .AddCheck<DepedencyInjectionHealthCheck<MqttClient>>("MqttClient");
 
             var app = builder.Build();
 
+            app.MapHealthChecks("/health");
+            app.MapHealthChecks("/healthz", new HealthCheckOptions
+            {
+                ResponseWriter = WriteResponse
+            });
+
             app.Run();
+        }
+
+        private static Task WriteResponse(HttpContext context, HealthReport healthReport)
+        {
+            context.Response.ContentType = "application/json; charset=utf-8";
+
+            var options = new JsonWriterOptions { Indented = true };
+
+            using var memoryStream = new MemoryStream();
+            using (var jsonWriter = new Utf8JsonWriter(memoryStream, options))
+            {
+                jsonWriter.WriteStartObject();
+                jsonWriter.WriteString("status", healthReport.Status.ToString());
+                jsonWriter.WriteStartObject("results");
+
+                foreach (var healthReportEntry in healthReport.Entries)
+                {
+                    jsonWriter.WriteStartObject(healthReportEntry.Key);
+                    jsonWriter.WriteString("status",
+                        healthReportEntry.Value.Status.ToString());
+                    jsonWriter.WriteString("description",
+                        healthReportEntry.Value.Description);
+                    jsonWriter.WriteStartObject("data");
+
+                    foreach (var item in healthReportEntry.Value.Data)
+                    {
+                        jsonWriter.WritePropertyName(item.Key);
+
+                        JsonSerializer.Serialize(jsonWriter, item.Value,
+                            item.Value?.GetType() ?? typeof(object));
+                    }
+
+                    jsonWriter.WriteEndObject();
+                    jsonWriter.WriteEndObject();
+                }
+
+                jsonWriter.WriteEndObject();
+                jsonWriter.WriteEndObject();
+            }
+
+            return context.Response.WriteAsync(
+                Encoding.UTF8.GetString(memoryStream.ToArray()));
         }
     }
 }

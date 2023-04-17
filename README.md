@@ -16,9 +16,9 @@ Docker container to push events from deCONZ REST API to a MQTT broker.
 docker run -d \
 	--name deconztomqtt \
 	--restart=always \
-	-e DeconzToMqtt_DeconzAddress=192.168.1.1 \
-	-e DeconzToMqtt_DeconzApiKey=528BAC1B40 \
-	-e DeconzToMqtt_MqttAddress=192.168.1.10 \
+	-e DeconzToMqtt__DeconzAddress=192.168.1.1 \
+	-e DeconzToMqtt__DeconzApiKey=528BAC1B40 \
+	-e DeconzToMqtt__MqttAddress=192.168.1.10 \
 	jasase/deconztomqtt
 ```
 

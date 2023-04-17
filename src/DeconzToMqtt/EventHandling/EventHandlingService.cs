@@ -77,7 +77,7 @@ namespace DeconzToMqtt.EventHandling
                             Content = entity.State.Data[state.Key].ToString().ToLowerInvariant()
 
                         };
-                        _logger.LogDebug("Publishing change for entity '{0}' on state '{1}' to value '{2}'",
+                        _logger.LogInformation("Publishing change for entity '{0}' on state '{1}' to value '{2}'",
                             mqttMessage.Entity.Name,
                             mqttMessage.PropertyName,
                             mqttMessage.Content);
