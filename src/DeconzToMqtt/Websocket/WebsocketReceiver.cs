@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Net.WebSockets;
+using System.Runtime.CompilerServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -18,7 +19,6 @@ namespace DeconzToMqtt.Websocket
         private readonly ILogger _logger;
         private readonly Uri _webSocketUri;
         private readonly HashSet<IWebSocketMessageSubscriber> _subscriber;
-        private CancellationTokenSource _cancelToken;
         private ClientWebSocket _socket;
 
         public WebsocketReceiver(ILogger<WebsocketReceiver> logger, IOptions<DeconzToMqttOption> options)
@@ -33,7 +33,7 @@ namespace DeconzToMqtt.Websocket
         {
             _logger.LogDebug("Start WebSocket to {0}", _webSocketUri);
             _socket = new ClientWebSocket();
-            await _socket.ConnectAsync(_webSocketUri, _cancelToken.Token);
+            await _socket.ConnectAsync(_webSocketUri, cancellationToken);
 
             await base.StartAsync(cancellationToken);
         }
@@ -45,7 +45,7 @@ namespace DeconzToMqtt.Websocket
             _logger.LogDebug("Stop WebSocket");
             _socket.Abort();
             _socket.Dispose();
-        }     
+        }
 
         public void Subscribe(IWebSocketMessageSubscriber subscriber)
         {
@@ -72,9 +72,9 @@ namespace DeconzToMqtt.Websocket
                     if (_socket.State != WebSocketState.Open)
                     {
                         _logger.LogWarning("Websocket stream closed. Try reconnect");
-                        TryReconnectSocket();
+                        TryReconnectSocket(stoppingToken);
                     }
-                    var msg = ReceiveFullMessage(_socket, _cancelToken.Token);
+                    var msg = ReceiveFullMessage(_socket, stoppingToken);
 
                     _logger.LogDebug("Received web socket message of length '{0}", msg.Item1.Count);
                     var stringData = Encoding.Default.GetString(msg.Item2);
@@ -98,7 +98,7 @@ namespace DeconzToMqtt.Websocket
             return Task.CompletedTask;
         }
 
-        private void TryReconnectSocket()
+        private async Task TryReconnectSocket(CancellationToken stoppingToken)
         {
             if (_socket != null)
             {
@@ -107,7 +107,7 @@ namespace DeconzToMqtt.Websocket
             }
 
             _socket = new ClientWebSocket();
-            _socket.ConnectAsync(_webSocketUri, _cancelToken.Token).Wait();
+            await _socket.ConnectAsync(_webSocketUri, stoppingToken);
         }
 
         private (WebSocketReceiveResult, byte[]) ReceiveFullMessage(WebSocket socket, CancellationToken cancelToken)
@@ -123,13 +123,13 @@ namespace DeconzToMqtt.Websocket
             } while (!response.EndOfMessage);
 
             return (response, message.ToArray());
-        }        
+        }
 
         public Task<HealthCheckResult> CheckHealthAsync(HealthCheckContext context, CancellationToken cancellationToken = default)
             => Task.FromResult(_socket != null && _socket.State == WebSocketState.Open
                     ? HealthCheckResult.Healthy()
                     : HealthCheckResult.Unhealthy());
 
-        
+
     }
 }

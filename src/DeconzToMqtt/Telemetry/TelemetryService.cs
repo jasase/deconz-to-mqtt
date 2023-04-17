@@ -23,7 +23,7 @@ namespace DeconzToMqtt.Telemetry
         {
             _logger = logger;
             _repositories = new DeconzRepository[] { sensorRepository, lightRepository };
-            _mqttClient = mqttClient;            
+            _mqttClient = mqttClient;
         }
 
         protected override async Task ExecuteAsync(CancellationToken stoppingToken)
@@ -58,7 +58,7 @@ namespace DeconzToMqtt.Telemetry
                     _logger.LogError(ex, "Error in telemetry processing occurred");
                 }
 
-                Thread.Sleep(TimeSpan.FromSeconds(60));
+                await Task.Delay(TimeSpan.FromSeconds(60), stoppingToken);
             }
         }
     }
